@@ -1,4 +1,151 @@
 SQL/simulated_audits.sql
+
+##Creating Tables
+
+CREATE OR REPLACE TABLE caiso-market-settlement.Market_Settlement_Audit_System.locations (
+  location_id STRING,
+  location_name STRING,
+  location_type STRING
+);
+
+CREATE OR REPLACE TABLE caiso-market-settlement.Market_Settlement_Audit_System.schedules (
+  schedule_id INT64,
+  location_id STRING,
+  interval_start TIMESTAMP,
+  scheduled_mw FLOAT64,
+  market_type STRING
+);
+
+CREATE OR REPLACE TABLE caiso-market-settlement.Market_Settlement_Audit_System.meter_data (
+  meter_id INT64,
+  location_id STRING,
+  interval_start TIMESTAMP,
+  metered_mw FLOAT64
+);
+CREATE TABLE caiso-market-settlement.Market_Settlement_Audit_System.prices(
+  price_id INT64,
+  location_id STRING,
+  interval_start TIMESTAMP,
+  lmp FLOAT64
+);
+
+##Inserting Mock Data into tables
+
+INSERT INTO `caiso-market-settlement.Market_Settlement_Audit_System.locations` (location_id, location_name, location_type)
+VALUES
+  ('SP15_1', 'Southern CA - Node 1', 'PNode'),
+  ('NP15_1', 'Northern CA - Node 1', 'PNode'),
+  ('ZP26_1', 'Mid CA - Node 1', 'PNode');
+
+INSERT INTO `caiso-market-settlement.Market_Settlement_Audit_System.schedules` (schedule_id, location_id, interval_start, scheduled_mw, market_type)
+VALUES
+  (1, 'SP15_1', '2024-04-01 00:00:00 UTC', 100.0, 'Day-Ahead'),
+  (2, 'NP15_1', '2024-04-01 00:00:00 UTC', 80.0, 'Day-Ahead'),
+  (3, 'ZP26_1', '2024-04-01 00:00:00 UTC', 90.0, 'Day-Ahead');
+
+INSERT INTO `caiso-market-settlement.Market_Settlement_Audit_System.meter_data` (meter_id, location_id, interval_start, metered_mw)
+VALUES
+  (1, 'SP15_1', '2024-04-01 00:00:00 UTC', 102.0),
+  (2, 'NP15_1', '2024-04-01 00:00:00 UTC', 75.0),
+  (3, 'ZP26_1', '2024-04-01 00:00:00 UTC', 92.0);
+
+INSERT INTO `caiso-market-settlement.Market_Settlement_Audit_System.prices` (price_id, location_id, interval_start, lmp)
+VALUES
+  (1, 'SP15_1', '2024-04-01 00:00:00 UTC', 45.50),
+  (2, 'NP15_1', '2024-04-01 00:00:00 UTC', 47.25),
+  (3, 'ZP26_1', '2024-04-01 00:00:00 UTC', 46.00);
+
+###Cleaning and Processing 
+SELECT *
+FROM Market_Settlement_Audit_System.schedules
+WHERE scheduled_mw IS NULL; -- Can run for metered_mw, lmp, etc
+
+SELECT schedule_id, COUNT(*)
+FROM Market_Settlement_Audit_System.schedules
+GROUP BY schedule_id
+HAVING COUNT(*)>1; --Checking for duplicates
+
+SELECT *
+FROM caiso-market-settlement.Market_Settlement_Audit_System.meter_data
+WHERE metered_mw < 0 OR metered_mw > 1000;  -- Validation/flag suspicious values
+
+
+###Audit of Imbalanced Costs
+
+SELECT
+  s.schedule_id,
+  s.location_id,
+  l.location_name,
+  s.interval_start,
+  s.market_type,
+  s.scheduled_mw,
+  m.metered_mw,
+  p.lmp,
+  ROUND(s.scheduled_mw * p.lmp, 2) AS expected_payment_usd,
+  ROUND(m.metered_mw * p.lmp, 2) AS actual_payment_usd,
+  ROUND((m.metered_mw - s.scheduled_mw), 2) AS deviation_mw,
+  ROUND((m.metered_mw - s.scheduled_mw) * p.lmp, 2) AS imbalance_cost_usd,
+  ROUND((m.metered_mw - s.scheduled_mw)/s.scheduled_mw, 2) AS percentage_deviation
+FROM
+  `caiso-market-settlement.Market_Settlement_Audit_System.schedules` s
+JOIN
+  `caiso-market-settlement.Market_Settlement_Audit_System.locations` l ON s.location_id = l.location_id
+JOIN
+  `caiso-market-settlement.Market_Settlement_Audit_System.meter_data` m ON s.location_id = m.location_id AND s.interval_start = m.interval_start
+JOIN
+  `caiso-market-settlement.Market_Settlement_Audit_System.prices` p ON s.location_id = p.location_id AND s.interval_start = p.interval_start
+ORDER BY
+  s.interval_start, s.location_id;
+
+###Checking for Energy Delivery Ratio
+SELECT
+  location_id,
+  scheduled_mw,
+  metered_mw,
+  metered_mw / scheduled_mw AS delivery_ratio
+FROM `caiso-market-settlement.Market_Settlement_Audit_System.full_settlement_audit_view`;
+
+### Matching meter and price data, checks for 
+SELECT s.schedule_id
+FROM Market_Settlement_Audit_System.schedules s
+LEFT JOIN Market_Settlement_Audit_System.meter_data m ON s.location_id = m.location_id AND s.interval_start = m.interval_start
+WHERE m.metered_mw IS NULL;
+
+### Missing prices for a scheduled interval
+SELECT s.schedule_id
+FROM Market_Settlement_Audit_System.schedules s
+LEFT JOIN Market_Settlement_Audit_System.prices p ON s.location_id = p.location_id AND s.interval_start = p.interval_start
+WHERE p.lmp IS NULL;
+
+###Audit of Unplanned Injections
+
+SELECT
+  s.location_id,
+  s.interval_start,
+  s.market_type,
+  s.scheduled_mw,
+  m.metered_mw,
+  ROUND(m.metered_mw - s.scheduled_mw, 2) AS unplanned_injection_mw,
+  p.lmp,
+  ROUND((m.metered_mw - s.scheduled_mw) * p.lmp, 2) AS estimated_cost_usd
+FROM
+  Market_Settlement_Audit_System.schedules s
+JOIN Market_Settlement_Audit_System.meter_data m
+  ON s.location_id = m.location_id AND s.interval_start = m.interval_start
+JOIN Market_Settlement_Audit_System.prices p
+  ON s.location_id = p.location_id AND s.interval_start = p.interval_start
+WHERE
+  m.metered_mw > s.scheduled_mw
+  AND s.scheduled_mw = 0
+ORDER BY
+  unplanned_injection_mw DESC;
+
+###Audit of Market Participation (with large data and varying market types, would be more applicable)
+SELECT market_type, AVG(metered_mw - scheduled_mw) AS avg_deviation
+FROM caiso-market-settlement.Market_Settlement_Audit_System.full_settlement_audit_view
+GROUP BY market_type;
+
+
 Data.Dictionary/field_definition.md
 Outputs/imbalance_summary.csv
 notebooks/CAISO_Audit_Analysis.ipynb
