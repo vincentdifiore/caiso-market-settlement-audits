@@ -166,17 +166,18 @@ deviation_mw: The difference in metered (actual) and scheduled megawatts.
 imabalance_cost_usd: The deviation in megawatts multiplied by locational marginal price.
 percent_deviation: The deviation in megawatts divided by expected/scheduled megawatts. 
 delivery_ratio: Metered (actual) megawatts delivered divided by the megawatts that were scheduled, can be positive or negative. 
-unplanned_injection_mw: The differende in metered (actual) and scheduled megawatts BUT only calculating when scheduled megwatts = 0.
+unplanned_injection_mw: The difference in metered (actual) and scheduled megawatts BUT only calculating when scheduled megwatts = 0.
 estimated_cost_usd: The unplanned injection amount by the locational marginal price.
 avg_deviation: The average of the difference in metered (actual) and scheduled megawatts. 
 
-Outputs/imbalance_summary.csv
+Outputs/
+
+Queries that returned datatables (Full Settlement Audit View, Energy Delivery Ratio, Market Participation) have been converted to 
+CSVs and are located in project contents. 
+
+notes/CAISO_Audit_Analysis.ipynb
+
+These 6 audit practices are representative of only a few of the techniques a Market Settlement Analyst could use to monitor accounting, timing, and the flow of energy. 
 
 
 
-#Displaying CSVs of Audits
-
-
-
-
-notebooks/CAISO_Audit_Analysis.ipynb
