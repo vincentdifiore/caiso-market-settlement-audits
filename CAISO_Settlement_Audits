@@ -1,6 +1,6 @@
 SQL/simulated_audits.sql
 
-##Creating Tables
+# Creating Tables
 
 CREATE OR REPLACE TABLE caiso-market-settlement.Market_Settlement_Audit_System.locations (
   location_id STRING,
@@ -29,7 +29,7 @@ CREATE TABLE caiso-market-settlement.Market_Settlement_Audit_System.prices(
   lmp FLOAT64
 );
 
-##Inserting Mock Data into tables
+# Inserting Mock Data into tables
 
 INSERT INTO `caiso-market-settlement.Market_Settlement_Audit_System.locations` (location_id, location_name, location_type)
 VALUES
@@ -55,7 +55,7 @@ VALUES
   (2, 'NP15_1', '2024-04-01 00:00:00 UTC', 47.25),
   (3, 'ZP26_1', '2024-04-01 00:00:00 UTC', 46.00);
 
-###Cleaning and Processing 
+# Cleaning and Processing 
 SELECT *
 FROM Market_Settlement_Audit_System.schedules
 WHERE scheduled_mw IS NULL; -- Can run for metered_mw, lmp, etc
@@ -70,7 +70,7 @@ FROM caiso-market-settlement.Market_Settlement_Audit_System.meter_data
 WHERE metered_mw < 0 OR metered_mw > 1000;  -- Validation/flag suspicious values
 
 
-###Audit of Imbalanced Costs
+# Audit of Imbalanced Costs
 
 CREATE OR REPLACE VIEW `caiso-market-settlement.Market_Settlement_Audit_System.full_settlement_audit_view` AS
 SELECT
@@ -98,7 +98,7 @@ JOIN
 ORDER BY
   s.interval_start, s.location_id;
 
-###Checking for Energy Delivery Ratio
+# Checking for Energy Delivery Ratio
 
 CREATE OR REPLACE VIEW `caiso-market-settlement.Market_Settlement_Audit_System.Energy_Delivery_Ratio` AS
 SELECT
@@ -108,7 +108,7 @@ SELECT
   metered_mw / scheduled_mw AS delivery_ratio
 FROM `caiso-market-settlement.Market_Settlement_Audit_System.full_settlement_audit_view`;
 
-### Matching meter and price data, checks for 
+# Matching meter and price data, checks for 
 
 CREATE OR REPLACE VIEW `caiso-market-settlement.Market_Settlement_Audit_System.meter_and_price` AS
 SELECT s.schedule_id
@@ -116,7 +116,7 @@ FROM Market_Settlement_Audit_System.schedules s
 LEFT JOIN Market_Settlement_Audit_System.meter_data m ON s.location_id = m.location_id AND s.interval_start = m.interval_start
 WHERE m.metered_mw IS NULL;
 
-### Missing prices for a scheduled interval
+# Missing prices for a scheduled interval
 
 CREATE OR REPLACE VIEW `caiso-market-settlement.Market_Settlement_Audit_System.missing_prices` AS
 SELECT s.schedule_id
@@ -124,7 +124,7 @@ FROM Market_Settlement_Audit_System.schedules s
 LEFT JOIN Market_Settlement_Audit_System.prices p ON s.location_id = p.location_id AND s.interval_start = p.interval_start
 WHERE p.lmp IS NULL;
 
-###Audit of Unplanned Injections
+# Audit of Unplanned Injections
 
 CREATE OR REPLACE VIEW `caiso-market-settlement.Market_Settlement_Audit_System.unplanned_injections` AS
 SELECT
@@ -148,7 +148,7 @@ WHERE
 ORDER BY
   unplanned_injection_mw DESC;
 
-###Audit of Market Participation (with large data and varying market types, would be more applicable)
+# Audit of Market Participation (with large data and varying market types, would be more applicable)
 
 CREATE OR REPLACE VIEW `caiso-market-settlement.Market_Settlement_Audit_System.Market_Participation` AS
 SELECT market_type, AVG(metered_mw - scheduled_mw) AS avg_deviation
