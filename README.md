@@ -1,4 +1,4 @@
-# caiso-market-settlement-audits
+# CAISO Market Settlement Audits
 Audit Analysis with Synthetic Grid Data by Vince DiFiore
 
 # Context
