@@ -72,6 +72,7 @@ WHERE metered_mw < 0 OR metered_mw > 1000;  -- Validation/flag suspicious values
 
 ###Audit of Imbalanced Costs
 
+CREATE OR REPLACE VIEW `caiso-market-settlement.Market_Settlement_Audit_System.full_settlement_audit_view` AS
 SELECT
   s.schedule_id,
   s.location_id,
@@ -98,6 +99,8 @@ ORDER BY
   s.interval_start, s.location_id;
 
 ###Checking for Energy Delivery Ratio
+
+CREATE OR REPLACE VIEW `caiso-market-settlement.Market_Settlement_Audit_System.Energy_Delivery_Ratio` AS
 SELECT
   location_id,
   scheduled_mw,
@@ -106,12 +109,16 @@ SELECT
 FROM `caiso-market-settlement.Market_Settlement_Audit_System.full_settlement_audit_view`;
 
 ### Matching meter and price data, checks for 
+
+CREATE OR REPLACE VIEW `caiso-market-settlement.Market_Settlement_Audit_System.meter_and_price` AS
 SELECT s.schedule_id
 FROM Market_Settlement_Audit_System.schedules s
 LEFT JOIN Market_Settlement_Audit_System.meter_data m ON s.location_id = m.location_id AND s.interval_start = m.interval_start
 WHERE m.metered_mw IS NULL;
 
 ### Missing prices for a scheduled interval
+
+CREATE OR REPLACE VIEW `caiso-market-settlement.Market_Settlement_Audit_System.missing_prices` AS
 SELECT s.schedule_id
 FROM Market_Settlement_Audit_System.schedules s
 LEFT JOIN Market_Settlement_Audit_System.prices p ON s.location_id = p.location_id AND s.interval_start = p.interval_start
@@ -119,6 +126,7 @@ WHERE p.lmp IS NULL;
 
 ###Audit of Unplanned Injections
 
+CREATE OR REPLACE VIEW `caiso-market-settlement.Market_Settlement_Audit_System.unplanned_injections` AS
 SELECT
   s.location_id,
   s.interval_start,
@@ -141,11 +149,33 @@ ORDER BY
   unplanned_injection_mw DESC;
 
 ###Audit of Market Participation (with large data and varying market types, would be more applicable)
+
+CREATE OR REPLACE VIEW `caiso-market-settlement.Market_Settlement_Audit_System.Market_Participation` AS
 SELECT market_type, AVG(metered_mw - scheduled_mw) AS avg_deviation
 FROM caiso-market-settlement.Market_Settlement_Audit_System.full_settlement_audit_view
 GROUP BY market_type;
 
 
 Data.Dictionary/field_definition.md
+
+# New fields made for auditing
+
+expected_payment_usd: The units of scheduled megawatts multiplied by the price of the locational marginal price to show expected payment. 
+actual_payment_usd: The units of metered (actual) megawatts mutiplied by the locational marginal price to show actual payment. 
+deviation_mw: The difference in metered (actual) and scheduled megawatts. 
+imabalance_cost_usd: The deviation in megawatts multiplied by locational marginal price.
+percent_deviation: The deviation in megawatts divided by expected/scheduled megawatts. 
+delivery_ratio: Metered (actual) megawatts delivered divided by the megawatts that were scheduled, can be positive or negative. 
+unplanned_injection_mw: The differende in metered (actual) and scheduled megawatts BUT only calculating when scheduled megwatts = 0.
+estimated_cost_usd: The unplanned injection amount by the locational marginal price.
+avg_deviation: The average of the difference in metered (actual) and scheduled megawatts. 
+
 Outputs/imbalance_summary.csv
+
+
+#Displaying CSVs of Audits
+
+
+
+
 notebooks/CAISO_Audit_Analysis.ipynb
