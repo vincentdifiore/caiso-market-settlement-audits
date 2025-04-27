@@ -13,6 +13,8 @@ _CAISO Settlement Audits_ is a full review of the SQL code used to create tables
 
 The attached CSV files are audit tables created in the analysis. The audits used to detect NULL values did not display data (no NULL values in this project).
 
+Ultimately, this project is a demonstration of how analysis can identify ineffiencies in timing, energy distribution, and pricing in the grid. By reducing these inefficiencies, power can be delivered to homes and businesses more timely, with more accuracy, and therefore with less cost impact. 
+
 Relevant concepts: Business Logic, Root-Cause Analysis, Actual vs Expected Payments, Unplanned Injections, Scheduling Deviations, Imbalance Costs, Energy Delivery
 
 
