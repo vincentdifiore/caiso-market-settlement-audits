@@ -108,9 +108,16 @@ SELECT
   metered_mw / scheduled_mw AS delivery_ratio
 FROM `caiso-market-settlement.Market_Settlement_Audit_System.full_settlement_audit_view`;
 
-# Matching meter and price data, checks for 
+# Audit of Market Participation (with large data and varying market types, would be more applicable)
 
-CREATE OR REPLACE VIEW `caiso-market-settlement.Market_Settlement_Audit_System.meter_and_price` AS
+CREATE OR REPLACE VIEW `caiso-market-settlement.Market_Settlement_Audit_System.Market_Participation` AS
+SELECT market_type, AVG(metered_mw - scheduled_mw) AS avg_deviation
+FROM caiso-market-settlement.Market_Settlement_Audit_System.full_settlement_audit_view
+GROUP BY market_type;
+
+# Matching meter and schedule data, checks for 
+
+CREATE OR REPLACE VIEW `caiso-market-settlement.Market_Settlement_Audit_System.meter_and_schedule` AS
 SELECT s.schedule_id
 FROM Market_Settlement_Audit_System.schedules s
 LEFT JOIN Market_Settlement_Audit_System.meter_data m ON s.location_id = m.location_id AND s.interval_start = m.interval_start
@@ -147,13 +154,6 @@ WHERE
   AND s.scheduled_mw = 0
 ORDER BY
   unplanned_injection_mw DESC;
-
-# Audit of Market Participation (with large data and varying market types, would be more applicable)
-
-CREATE OR REPLACE VIEW `caiso-market-settlement.Market_Settlement_Audit_System.Market_Participation` AS
-SELECT market_type, AVG(metered_mw - scheduled_mw) AS avg_deviation
-FROM caiso-market-settlement.Market_Settlement_Audit_System.full_settlement_audit_view
-GROUP BY market_type;
 
 
 Data.Dictionary/field_definition.md
