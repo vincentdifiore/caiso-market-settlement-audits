@@ -58,7 +58,7 @@ VALUES
 # Cleaning and Processing 
 SELECT *
 FROM Market_Settlement_Audit_System.schedules
-WHERE scheduled_mw IS NULL; -- Can run for metered_mw, lmp, etc
+WHERE scheduled_mw IS NULL; -- Can run for any field
 
 SELECT schedule_id, COUNT(*)
 FROM Market_Settlement_Audit_System.schedules
